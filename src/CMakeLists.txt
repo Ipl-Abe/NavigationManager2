@@ -1,7 +1,10 @@
-set(comp_srcs NavigationManager.cpp )
-set(standalone_srcs NavigationManagerComp.cpp)
+set(comp_srcs HttpServer.cpp NavigationManager.cpp )
+set(standalone_srcs HttpServer.cpp NavigationManagerComp.cpp)
 
 find_package(OpenCV REQUIRED)
+if(WIN32)
+  add_definitions(-D _WIN32_WINNT=0x0A00)
+endif(WIN32)
 
 if(${OPENRTM_VERSION_MAJOR} LESS 2)
   set(OPENRTM_CFLAGS ${OPENRTM_CFLAGS} ${OMNIORB_CFLAGS})

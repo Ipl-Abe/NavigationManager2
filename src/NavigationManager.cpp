@@ -14,7 +14,6 @@
 #include <opencv2/opencv.hpp>
 
 
-
 // Module specification
 // <rtc-template block="module_spec">
 static const char* navigationmanager_spec[] =
@@ -162,7 +161,7 @@ RTC::ReturnCode_t NavigationManager::onShutdown(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t NavigationManager::onActivated(RTC::UniqueId ec_id)
 {
-  m_pServer = new HttpServer();
+  m_pServer = createHttpServer();
   m_pServer->setRTC(this);
   m_pServer->initServer();
   m_pServer->runBackground(m_base_dir, m_address, m_port, 10.0);
