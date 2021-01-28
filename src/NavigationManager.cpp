@@ -9,6 +9,12 @@
 
 #include "NavigationManager.h"
 
+#include <thread>
+#include <memory>
+#include <opencv2/opencv.hpp>
+
+
+
 // Module specification
 // <rtc-template block="module_spec">
 static const char* navigationmanager_spec[] =
@@ -24,6 +30,11 @@ static const char* navigationmanager_spec[] =
     "max_instance",      "1",
     "language",          "C++",
     "lang_type",         "compile",
+
+    "conf.default.base_dir", "../",
+    "conf.default.address", "0.0.0.0",
+    "conf.default.port", "8088",
+    
     ""
   };
 // </rtc-template>
@@ -39,10 +50,11 @@ NavigationManager::NavigationManager(RTC::Manager* manager)
     m_rangeIn("range", m_range),
     m_targetVelocityOut("targetVelocity", m_targetVelocity),
     m_mapServerPort("mapServer"),
-    m_mclServicePort("mclService")
-
+    m_mclServicePort("mclService"),
+    m_pServer(nullptr)
     // </rtc-template>
 {
+
 }
 
 /*!
@@ -52,6 +64,45 @@ NavigationManager::~NavigationManager()
 {
 }
 
+
+bool NavigationManager::refreshMap() {
+  NAVIGATION::OccupancyGridMap_var map;
+  NAVIGATION::OccupancyGridMapRequestParam_var param;
+  auto ret = m_NAVIGATION_OccupancyGridMapServer->requestLocalMap(param, map);
+  if (ret != NAVIGATION::MAP_RETVAL_OK) {
+      std::cout << "[MapServerTester] failed to get map" << std::endl;
+      return false;
+  }
+
+  int col = map->config.sizeOfMap.w / map->config.sizeOfGrid.w;
+  int row = map->config.sizeOfMap.l / map->config.sizeOfGrid.l;
+  int typ = CV_8UC1; // grayscale
+  cv::Mat img(row, col, typ);
+  std::cout << "img(" << row << " x " << col << ")" << std::endl;
+  for(int r = 0;r < row;r++) {
+    for(int c = 0;c < col;c++) {
+      //img.at<uchar>(r, c, 0) = map->cells[r*col+c];
+      img.data[r*col + c] = map->cells[r*col + c];
+    }
+  }
+  cv::Mat tmp;
+  cv::cvtColor(img, tmp, cv::COLOR_GRAY2BGR);
+  std::string map_filename = "/map_temp.png";
+  auto path = m_base_dir + map_filename;
+  
+  cv::imwrite(path, tmp);
+  std::cout << "map is saved to " << path << std::endl;
+  m_mapConfig.map_path = map_filename;
+  m_mapConfig.x_scale = map->config.sizeOfGrid.w;
+  m_mapConfig.y_scale = map->config.sizeOfGrid.l;
+  m_mapConfig.globalPositionOfTopLeft_x = map->config.globalPositionOfTopLeft.position.x;
+  m_mapConfig.globalPositionOfTopLeft_y = map->config.globalPositionOfTopLeft.position.y;
+  m_mapConfig.image_columns = img.cols;
+  m_mapConfig.image_rows    = img.rows;
+
+
+  return true;
+}
 
 
 RTC::ReturnCode_t NavigationManager::onInitialize()
@@ -78,6 +129,10 @@ RTC::ReturnCode_t NavigationManager::onInitialize()
   // </rtc-template>
 
   // <rtc-template block="bind_config">
+  bindParameter("base_dir", m_base_dir, "../");
+  bindParameter("address", m_address, "0.0.0.0");
+  bindParameter("port", m_port, "8080");
+    
   // </rtc-template>
 
   return RTC::RTC_OK;
@@ -107,18 +162,43 @@ RTC::ReturnCode_t NavigationManager::onShutdown(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t NavigationManager::onActivated(RTC::UniqueId ec_id)
 {
+  m_pServer = new HttpServer();
+  m_pServer->setRTC(this);
+  m_pServer->initServer();
+  m_pServer->runBackground(m_base_dir, m_address, m_port, 10.0);
+
+  m_currentRobotPose.tm.sec = 0;
+  m_currentRobotPose.tm.nsec = 0;
+  m_currentRobotPose.data.position.x = 0;
+  m_currentRobotPose.data.position.y = 0;
+  m_currentRobotPose.data.heading = 0;
   return RTC::RTC_OK;
 }
 
 
 RTC::ReturnCode_t NavigationManager::onDeactivated(RTC::UniqueId ec_id)
 {
+  m_pServer->terminateBackground();
+  delete m_pServer;
+  m_pServer = nullptr;
   return RTC::RTC_OK;
 }
 
 
 RTC::ReturnCode_t NavigationManager::onExecute(RTC::UniqueId ec_id)
 {
+  if (m_currentRobotPoseIn.isNew()) {
+    m_currentRobotPoseIn.read();
+  }
+
+  if (m_rangeIn.isNew()) {
+    m_rangeIn.read();
+    //range_ = m_range;
+  }
+
+  setTimestamp(m_targetVelocity);
+  m_targetVelocityOut.write();
+  
   return RTC::RTC_OK;
 }
 

@@ -1,0 +1,294 @@
+<!DOCTYPE html><html>
+<head lang="en">
+  <meta charset="utf-8" />
+  <link rel="stylesheet" type="text/css" href="default.css" />
+  <script type="text/javascript">
+
+/// キーイベントの送信APIを使用
+/// param: key キーイベント番号。
+/// - OK:    1
+/// - BACK:  2
+/// - UP:    6
+/// - LEFT:  8
+/// - RIGHT: 9
+/// - DOWN:  7
+function sendKey(key) {
+  var request = new XMLHttpRequest();
+  request.open("PUT", "/api/key", true); 
+  request.setRequestHeader("Content-Type", "application/json");
+  request.send(key)
+}
+
+/// 指定されたURLからGETメソッドでjsonファイルを取得して
+/// parseしてJavascriptのobjectを取得するメソッド
+/// 失敗したら空のオブジェクトが還ります。
+function requestObject(url){
+  var ret = {};
+  /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
+  /// ラムダ式が使えない。Ubuntu14.04略
+  ret.then = function(func){
+    var request = new XMLHttpRequest(); 
+    request.open("GET", url, true);
+    request.send(null);
+    request.onreadystatechange = function(){
+      if(request.readyState == 4){
+        if(request.status == 200){
+          func(JSON.parse(request.responseText));
+        } else {
+//            reject();
+        }
+      }
+    }
+  };
+  return ret;
+};
+
+
+/// 指定されたURLからGETメソッドでjsonファイルを取得して
+/// parseしてJavascriptのobjectを取得するメソッド
+/// 失敗したら空のオブジェクトが還ります。
+function refreshMap(){
+  let url = "/api/map/refresh"
+  var ret = {};
+  /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
+  /// ラムダ式が使えない。Ubuntu14.04略
+    var request = new XMLHttpRequest(); 
+    request.open("PUT", url, true);
+    request.send(null);
+    request.onreadystatechange = function(){
+      if(request.readyState == 4){
+        if(request.status == 200){
+          //func(JSON.parse(request.responseText));
+        } else {
+//            reject();
+        }
+      }
+    }
+  
+};
+
+/// 現在の位置姿勢取得
+function requestPose(){
+  return requestObject('/api/currentRobotPose');
+};
+
+/// 現在の計画軌道全体を取得
+function requestPath(){
+  return requestObject('/planner/path');
+};
+
+/// 現在追従中の軌道直線のデータ取得
+function requestCurrentPath(){
+  return requestObject('/planner/current_path');
+};
+
+/// レーザースキャンのデータの取得。
+function requestScan(){
+  return requestObject('/api/rangeScan');
+}
+
+/// マップ情報の取得。解像度などの情報
+function requestMapInfo(){
+	refreshMap();
+  return requestObject('/api/map/config');
+};
+
+/// rvizに表示している日本語メッセージの取得
+function requestGuidance() {
+  return requestObject('/ui/guidance');
+};
+
+/// rvizに取得している走査範囲領域矩形情報の取得
+function requestMarker() {
+  return requestObject('/ui/marker');
+};
+
+/// マップ画像の取得
+function requestImage() {
+  var ret = {};
+  /// Promiseが使えない。ラムダ式も使えない。
+  ret.then = function(func){
+    var img = new Image();
+    img.onload = function(){
+      func(img);
+    };
+    img.src = '/map_temp.png';
+  }
+  return ret;
+};
+
+/// positionのデータを、mapInfoによってマップ上のピクセル単位の位置に変換
+function pxPosition(mapInfo, position) {
+  return {'x': (mapInfo.globalPositionOfTopLeft_x + position.x) / mapInfo.x_scale,
+          'y': (-mapInfo.globalPositionOfTopLeft_y - position.y) / mapInfo.y_scale};
+}
+
+
+/// ドロップダウンを変更した時のコールバック
+/// id: ドロップダウンのid
+/// filename: ドロップダウンのvalue。ファイル名が入る
+function onSelectChange(id, filename) {
+  var tf = document.getElementById("param_file_text");
+  var request = new XMLHttpRequest(); 
+  url = "/param/" + filename;
+  /// ファイル名から中身を取得するAPIを呼ぶ
+  request.open("GET", url, true);
+  request.send(null);
+  request.onreadystatechange = function(){
+    if(request.readyState == 4){
+      if(request.status == 200){
+        /// ファイルの中身をテクストエリアに表示する
+        tf.value = request.responseText;
+      }  
+    }
+  };
+}
+
+
+/// グローバル変数
+var currentPose = undefined;
+var path = undefined;
+var currentPath = undefined;
+var mapInfo = undefined;
+var scan = undefined;
+var guidance = "";
+var marker = undefined
+
+/// この関数がAnimationで周期的に呼ばれる
+function main() {
+
+  /// These parameters are modified for ah01's tests.
+  var robotSize = [20, 10];
+  var zoom = 1.;
+  var origin = [0, 0];
+
+  /// 周期的にマップ画像を取得
+  requestImage().then(function(img){
+    /// マップ画像がきたら・・・・
+    if (mapInfo == undefined) return;
+    if (currentPose === undefined) return; 
+
+    /// マップの画像を書き込む
+    var ctx = document.getElementById('main_canvas').getContext('2d');
+    ctx.drawImage(img, origin[0]/zoom, origin[1]/zoom, mapInfo.image_columns/zoom, mapInfo.image_rows/zoom);
+
+    /// 文字列を表示する
+    ctx.font = '24px';
+    ctx.fillStyle = 'rgb(255,255,255)';
+    ctx.fillText("------------------ MESSAGE ---------------------", 10, 10)
+    //console.log(guidance.data.split('<br />'));
+    //var msgs = guidance.data.split('<br/>');
+    var y = 25; var step = 15;
+    //msgs.forEach(function(msg) {
+    //  ctx.fillText(msg, 10, y);
+    //  y += step;
+    //});
+
+    ctx.fillText("------------------ DEBUG ---------------------", 10, 650)
+    ctx.fillText("currentPose:" + JSON.stringify(currentPose), 10, 665);
+    ctx.fillText("mapInfo    :"+JSON.stringify(mapInfo), 10, 680);
+
+
+	
+
+    /// 全体のジグザグ軌道を表示する
+    if (path !== undefined) {
+      var pathInPx = path.path.map(function(wp){return pxPosition(mapInfo, wp);});
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo((pathInPx[0].x + origin[0])/zoom, (pathInPx[0].y + origin[1])/zoom);
+      for (var i = 1;i < pathInPx.length;i++) {
+        ctx.lineTo((pathInPx[i].x + origin[0])/zoom, (pathInPx[i].y + origin[1])/zoom);
+      }
+      ctx.stroke();
+    }
+
+    /// ロボットの位置と姿勢をピクセル単位に修正
+    let robotPoseInPx = {'position': pxPosition(mapInfo, currentPose.data.position),
+                        'heading': currentPose.data.heading };
+    //ctx.fillText(JSON.stringify(robotPoseInPx), 10, 110);
+
+    /// まず、ロボットの位置・姿勢の分だけContext2Dを移動・回転
+    ctx.translate((robotPoseInPx.position.x + origin[0])/zoom,
+                (robotPoseInPx.position.y + origin[1])/zoom);
+    ctx.rotate(-robotPoseInPx.heading);
+
+    /// ロボットの本体を表示。白は本体。黄色はカメラ部分
+    ctx.fillStyle = 'red';      
+    ctx.fillRect(-robotSize[0]/2, -robotSize[1]/2, robotSize[0], robotSize[1]);     
+
+    /// レーザースキャンを書き込む
+    if (scan !== undefined) {
+      /// レーザースキャンはロボット本体の原点からオフセットしているのでその分だけさらに移動
+      ctx.translate(scan.base2laser[0]/mapInfo.x_scale/zoom,scan.base2laser[1]/mapInfo.y_scale/zoom)
+
+      /// レーザースキャンの距離と角度から点の位置を計算
+      var th = scan.amin;
+      ctx.fillStyle = 'orange'; 
+      scan.ranges.forEach(function(r) {
+        var x = r * Math.cos(th)/mapInfo.x_scale/zoom;
+        var y = -r * Math.sin(th)/mapInfo.y_scale/zoom;
+        th = th + scan.ares * scan.step;
+        ctx.fillRect(x-1,y-1,2,2);
+      });
+      /// ロボットの原点に戻す
+      ctx.translate(-scan.base2laser[0]/mapInfo.xScale/zoom,-scan.base2laser[1]/mapInfo.yScale/zoom)
+    } /// レーザースキャンの書き込み完了
+
+    /// ロボットの位置・姿勢への回転を元に戻す
+    ctx.rotate(robotPoseInPx.heading);
+    ctx.translate(-(robotPoseInPx.position.x + origin[0])/zoom,
+                  -(robotPoseInPx.position.y + origin[1])/zoom);
+
+  });
+
+  /// 再度、アニメーションでmain関数を呼ぶ予約をする
+  window.requestAnimationFrame(main);
+  /// 各種のデータを取得してグローバル変数に書き込む
+  requestScan().then(function(_scan){ scan = _scan; });
+  //requestPath().then(function(_path){ path = _path; });
+  //requestCurrentPath().then(function(_path){ currentPath = _path; });
+  requestPose().then(function(pose){currentPose = pose;});
+  requestMapInfo().then(function(info){mapInfo = info; });
+  //requestGuidance().then(function(g){guidance = g; });
+  //requestMarker().then(function(m){marker = m; });
+
+};
+
+/// DOMのロードが終わった時の処理予約
+window.addEventListener('DOMContentLoaded', function() {
+  // updateParamFileList(); // パラメータファイルのリストを取得してドロップダウンを準備
+  window.requestAnimationFrame(main); // アニメーションの予約
+});
+
+  </script>
+</head>
+<body>
+  <div style="float:left;">
+  <canvas id="main_canvas" width="900px" height="900px" >
+  </canvas>
+  </div>
+  <div style="text-align:center;">
+    <p>Input Buttons</p>
+  <input type="button" onclick="sendKey(0);" value="STOP" style="width:210px;"/>
+  <br/>  
+  <input type="button" onclick="sendKey(1);" value="UP"style="width:70px;"/>
+  <br/>
+  <input type="button" onclick="sendKey(4);" value="LEFT" style="width:70px;margin-right:70px;"/>
+  <input type="button" onclick="sendKey(2);" value="RIGHT" style="width:70px;"/>
+  <br/>
+  <input type="button" onclick="sendKey(3);" value="DOWN"style="width:70px;"/>
+  <br/>
+  </div>
+  <div style="text-align:center;">
+    <p>Parameters</p>
+    <select name="param_files" id="param_file_dd" onchange="onSelectChange(name, value);">
+    </select><br />
+    <textarea name="kansou" id="param_file_text" rows="10" cols="40">Please Select Param Filename</textarea><br>
+    <input type="submit" value="Submit" onclick="onSubmitParam()"> <input type="submit" value="Load Default" onclick="onLoadDefault()">
+    <div id="response_area"></div>
+  </div>
+</body>
+
+</html>

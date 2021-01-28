@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
+set(CMAKE_CXX_STANDARD 14)
+
 project(NavigationManager)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 include("${PROJECT_SOURCE_DIR}/cmake/utils.cmake")
