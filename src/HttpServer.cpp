@@ -77,6 +77,7 @@ public:
 		server_.Put((endpoint + "pf/refresh").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
 		  std::cout  << "/pf/refresh called" << std::endl;		  
 			if (m_pRTC->refreshPF()) {
+				std::lock_guard<std::mutex> g(m_pRTC->mcl_mutex_);
 			  std::cout << " - OK. 200" << std::endl;
 			  res.status = 200;
 			  res.version = "1.0";
