@@ -67,6 +67,31 @@ function refreshMap(){
   
 };
 
+function refreshPF(){
+  console.log('refreshing PF.....');
+  var ret = {};
+  let url = "/api/pf/refresh";
+  /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
+  /// ラムダ式が使えない。Ubuntu14.04略
+  ret.then = function(func){
+    var request = new XMLHttpRequest(); 
+    request.open("PUT", url, true);
+    request.send(null);
+    request.onreadystatechange = function(){
+      if(request.readyState == 4){
+        if(request.status == 200){
+			console.log('PF update!');
+          func(JSON.parse(request.responseText));
+        } else {
+//            reject();
+        }
+      }
+    }
+  };
+  return ret;
+  
+};
+
 /// 現在の位置姿勢取得
 function requestPose(){
   return requestObject('/api/currentRobotPose');
@@ -77,25 +102,25 @@ function requestPath(){
   return requestObject('/planner/path');
 };
 
-/// 現在追従中の軌道直線のデータ取得
-function requestCurrentPath(){
-  return requestObject('/planner/current_path');
-};
-
 /// レーザースキャンのデータの取得。
 function requestScan(){
   return requestObject('/api/rangeScan');
 }
 
+var c = 0;
 /// マップ情報の取得。解像度などの情報
 function requestMapInfo(){
+  c += 1;
+  if (c % 100 == 1) {
 	refreshMap();
+  }
   return requestObject('/api/map/config');
 };
 
-/// rvizに表示している日本語メッセージの取得
-function requestGuidance() {
-  return requestObject('/ui/guidance');
+
+var cp = 0;
+function requestParticles() {
+  return refreshPF();
 };
 
 /// rvizに取得している走査範囲領域矩形情報の取得
@@ -153,6 +178,7 @@ var mapInfo = undefined;
 var scan = undefined;
 var guidance = "";
 var marker = undefined
+var pfInfo;
 
 /// この関数がAnimationで周期的に呼ばれる
 function main() {
@@ -202,7 +228,40 @@ function main() {
         ctx.lineTo((pathInPx[i].x + origin[0])/zoom, (pathInPx[i].y + origin[1])/zoom);
       }
       ctx.stroke();
-    }
+	}
+	
+	// PFの表示
+	if (pfInfo) {
+		for(var p of pfInfo.ps) {
+			// console.log(p.p);
+			let w  = p.w / pfInfo.maxW;
+
+			let pInPx = {'position': pxPosition(mapInfo, {x:p.p[0], y:p.p[1]}),
+						'heading': p.p[2]};
+						
+			ctx.translate((pInPx.position.x + origin[0])/zoom,
+						(pInPx.position.y + origin[1])/zoom);
+			ctx.rotate(-pInPx.heading);
+
+			/// ロボットの本体を表示。白は本体。黄色はカメラ部分
+			ctx.strokeStyle = 'purple';
+			let r = 255 * w;
+			// console.log(r, w);
+			let g = 0;
+			let b = 255 * (1-w)
+			ctx.fillStyle = "#"+(r).toString(16).padStart(2,'0')+(g).toString(16).padStart(2,'0')+(b).toString(16).padStart(2,'0');  
+			console.log(ctx.fillStyle);
+			ctx.fillRect(-robotSize[0]/4, -robotSize[1]/4, robotSize[0]/2, robotSize[1]/2);     
+
+			/// ロボットの位置・姿勢への回転を元に戻す
+			ctx.rotate(pInPx.heading);
+			ctx.translate(-(pInPx.position.x + origin[0])/zoom,
+						-(pInPx.position.y + origin[1])/zoom);
+						
+		}
+	}
+
+
 
     /// ロボットの位置と姿勢をピクセル単位に修正
     let robotPoseInPx = {'position': pxPosition(mapInfo, currentPose.data.position),
@@ -215,7 +274,7 @@ function main() {
     ctx.rotate(-robotPoseInPx.heading);
 
     /// ロボットの本体を表示。白は本体。黄色はカメラ部分
-    ctx.fillStyle = 'red';      
+    ctx.fillStyle = 'green';      
     ctx.fillRect(-robotSize[0]/2, -robotSize[1]/2, robotSize[0], robotSize[1]);     
 
     /// レーザースキャンを書き込む
@@ -240,17 +299,22 @@ function main() {
     ctx.rotate(robotPoseInPx.heading);
     ctx.translate(-(robotPoseInPx.position.x + origin[0])/zoom,
                   -(robotPoseInPx.position.y + origin[1])/zoom);
-
+	 
+	
   });
 
   /// 再度、アニメーションでmain関数を呼ぶ予約をする
-  window.requestAnimationFrame(main);
+  // window.requestAnimationFrame(main);
+
   /// 各種のデータを取得してグローバル変数に書き込む
   requestScan().then(function(_scan){ scan = _scan; });
   //requestPath().then(function(_path){ path = _path; });
   //requestCurrentPath().then(function(_path){ currentPath = _path; });
   requestPose().then(function(pose){currentPose = pose;});
   requestMapInfo().then(function(info){mapInfo = info; });
+  cp += 1;
+  if (cp % 3 == 0)
+    requestParticles().then(function(info) { pfInfo = info; });
   //requestGuidance().then(function(g){guidance = g; });
   //requestMarker().then(function(m){marker = m; });
 
@@ -259,7 +323,8 @@ function main() {
 /// DOMのロードが終わった時の処理予約
 window.addEventListener('DOMContentLoaded', function() {
   // updateParamFileList(); // パラメータファイルのリストを取得してドロップダウンを準備
-  window.requestAnimationFrame(main); // アニメーションの予約
+  // window.requestAnimationFrame(main); // アニメーションの予約
+  setInterval(main, 100);
 });
 
   </script>

@@ -4,10 +4,12 @@
 #include <iostream>
 #include <sstream>
 #include "InterfaceDataTypes.hh"
-
+#include "MobileRobotNavigation.hh"
 class NavigationManager;
 
 class HttpServer;
+
+
 struct NavigationMapConfig {
 	std::string map_path;
 	double x_scale;
@@ -18,6 +20,26 @@ struct NavigationMapConfig {
 	int32_t image_rows;
 };
 
+inline std::string toJson(NAVIGATION::MCLInfo info) {
+  std::stringstream ss;
+  ss << "{\"maxW\":" << info.maxWeight << ","
+     << "\"maxWIndex\":" << info.maxWeightIndex << ","
+     << "\"ps\":[";
+  const int len = info.particles.length();
+  for(int i = 0;i < len;i++) {
+    const auto& p = info.particles[i];
+    ss << "{\"p\":["
+       << p.pose.position.x << "," << p.pose.position.y << ","
+       << p.pose.heading << "],"
+       <<  "\"w\":" << p.weight
+       << "}";
+    if (i != len-1) {
+      ss << ",";
+    }
+  }
+  ss << "]}";
+  return ss.str();
+}
 
 inline std::string toJson(const RTC::RangeData& range, const long step) {
 	std::cout << "ToJson data Range Data conversion...." << std::endl;

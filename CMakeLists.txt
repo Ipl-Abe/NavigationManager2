@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.2)
 
 set(CMAKE_CXX_STANDARD 14)
 
-project(NavigationManager)
+project(NavigationManager LANGUAGES CXX C VERSION 1.0)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 include("${PROJECT_SOURCE_DIR}/cmake/utils.cmake")
 set(PROJECT_VERSION 1.0.0 CACHE STRING "NavigationManager version")
@@ -93,8 +93,8 @@ endif(STATIC_LIBS)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
    # Mac OS X specific code
-   SET(CMAKE_CXX_COMPILER "g++")
-   SET(CMAKE_MACOSX_RPATH 1)
+   # SET(CMAKE_CXX_COMPILER "g++")
+   # SET(CMAKE_MACOSX_RPATH 1)
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 

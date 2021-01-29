@@ -51,6 +51,7 @@ NavigationManager::NavigationManager(RTC::Manager* manager)
     m_mapServerPort("mapServer"),
     m_mclServicePort("mclService"),
     m_pServer(nullptr)
+  ,    m_mclInfo(new NAVIGATION::MCLInfo())
     // </rtc-template>
 {
 
@@ -63,13 +64,27 @@ NavigationManager::~NavigationManager()
 {
 }
 
+bool NavigationManager::refreshPF() {
+  std::cout << "[NavigationManager] NavigationManager::refreshPF() called." << std::endl;
+  std::lock_guard<std::mutex> g(mcl_mutex_);
+  //NAVIGATION::MCLInfo_var info(new NAVIGATION::MCLInfo());
+  auto ret = m_NAVIGATION_MonteCarloLocalization->requestParticles(m_mclInfo);
+  if (ret != NAVIGATION::MCL_RETVAL_OK) {
+    std::cout << "[NavigationManager] failed to get pf" << std::endl;
+    return false;    
+  }
+  //  m_mclInfo = *info;
+  std::cout << "[NavigationManager] NavigationManager::refreshPF() exit." << std::endl;  
+  return true;
+}
 
 bool NavigationManager::refreshMap() {
+  std::cout << "[NavigationManager] NavigationManager::refreshMap() called." << std::endl;  
   NAVIGATION::OccupancyGridMap_var map;
   NAVIGATION::OccupancyGridMapRequestParam_var param;
   auto ret = m_NAVIGATION_OccupancyGridMapServer->requestLocalMap(param, map);
   if (ret != NAVIGATION::MAP_RETVAL_OK) {
-      std::cout << "[MapServerTester] failed to get map" << std::endl;
+      std::cout << "[NavigationManager] failed to get map" << std::endl;
       return false;
   }
 

@@ -289,8 +289,13 @@ class NavigationManager
   // </rtc-template>
   HttpServer* m_pServer;
 
-  public:
-    bool refreshMap();
+public:
+  bool refreshMap();
+
+  std::mutex mcl_mutex_;
+  NAVIGATION::MCLInfo_var m_mclInfo;
+  bool refreshPF();
+  
   NavigationMapConfig m_mapConfig;
 
   void keyEvent(const std::string& val) {
@@ -326,6 +331,7 @@ class NavigationManager
   const RTC::TimedPose2D& getCurrentRobotPose() { return m_currentRobotPose; }
   const RTC::RangeData& getRange() { return m_range; }
   const NavigationMapConfig& getMapConfig() { return m_mapConfig; }
+  const NAVIGATION::MCLInfo& getMCLInfo() { return m_mclInfo; }
 };
 
 

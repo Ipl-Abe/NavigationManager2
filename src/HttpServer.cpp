@@ -72,6 +72,31 @@ public:
 			res.version = "1.0";
 			res.body = toJson(m_pRTC->getMapConfig());
 			});
+
+
+		server_.Put((endpoint + "pf/refresh").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
+		  std::cout  << "/pf/refresh called" << std::endl;		  
+			if (m_pRTC->refreshPF()) {
+			  std::cout << " - OK. 200" << std::endl;
+			  res.status = 200;
+			  res.version = "1.0";
+			  res.body = toJson(m_pRTC->getMCLInfo());
+			  std::cout << " body: " << res.body << std::endl;
+			}
+			else {
+			  std::cout << " - Failed. 200" << std::endl;			  
+			  res.status = 402;
+			  res.version = "1.0";
+			  res.body = "Failed to load map from MapServer";
+			}
+		});
+
+		server_.Get((endpoint + "pf/info").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
+		  res.status = 200;
+		  res.version = "1.0";
+		  res.body = toJson(m_pRTC->getMCLInfo());
+		});
+
 	}
 
 	/*
