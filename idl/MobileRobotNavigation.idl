@@ -89,6 +89,12 @@ module NAVIGATION {
      * Configuration is provided with Key-value string pair.
      */
     MCLConfigMap config;
+
+    double maxWeight;
+
+    unsigned long maxWeightIndex;
+    
+    
   };
 
 
