@@ -47,14 +47,14 @@ function requestObject(url){
 /// 指定されたURLからGETメソッドでjsonファイルを取得して
 /// parseしてJavascriptのobjectを取得するメソッド
 /// 失敗したら空のオブジェクトが還ります。
-function refreshMap(){
+function refreshMap(param){
   let url = "/api/map/refresh"
   var ret = {};
   /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
   /// ラムダ式が使えない。Ubuntu14.04略
-    var request = new XMLHttpRequest(); 
+	var request = new XMLHttpRequest(); 
     request.open("PUT", url, true);
-    request.send(null);
+    request.send(JSON.stringify(param));
     request.onreadystatechange = function(){
       if(request.readyState == 4){
         if(request.status == 200){
@@ -112,7 +112,12 @@ var c = 0;
 function requestMapInfo(){
   c += 1;
   if (c % 100 == 1) {
-	refreshMap();
+	  // TODO: ここを修正してマップが部分マップを取れるようにできるか検証すべき（多分できる）
+	  let param = {};
+	  param.globalPositionOfCenter = {x: 0, y: 0};
+	  param.sizeOfMap = {width: -1, height: -1};
+	  param.sizeOfGrid = {width: 0.05, height: 0.05};
+      refreshMap(param);
   }
   return requestObject('/api/map/config');
 };
@@ -144,8 +149,8 @@ function requestImage() {
 
 /// positionのデータを、mapInfoによってマップ上のピクセル単位の位置に変換
 function pxPosition(mapInfo, position) {
-  return {'x': (mapInfo.globalPositionOfTopLeft_x + position.x) / mapInfo.x_scale,
-          'y': (-mapInfo.globalPositionOfTopLeft_y - position.y) / mapInfo.y_scale};
+  return {'x': (-mapInfo.globalPositionOfTopLeft_x + position.x) / mapInfo.x_scale,
+          'y': (mapInfo.globalPositionOfTopLeft_y - position.y) / mapInfo.y_scale};
 }
 
 

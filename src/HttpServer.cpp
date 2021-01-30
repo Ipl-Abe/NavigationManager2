@@ -4,6 +4,8 @@
 
 #define _WIN32_WINNT 0x0501
 #include "httplib.h"
+#include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
 #include "NavigationManager.h"
 
 
@@ -49,7 +51,50 @@ public:
 			});
 
 		server_.Put((endpoint + "map/refresh").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
-			if (m_pRTC->refreshMap()) {
+		  rapidjson::Document doc;
+		  std::string body = req.body;
+		  doc.Parse(body.c_str());
+		  if (doc.HasParseError()) {
+		    res.status = 402;
+		    res.version = "1.0";
+		    res.body = "Invalid JSON data";
+		    return;
+		  }
+
+		  /// {
+		  ///  "globalPositionOfCenter": {"x":x,"y":y,"a":a},
+		  ///  "sizeOfMap":{"width":mapWidth,"height":mapHeight},
+		  ///  "sizeOfGrid": {"width":gridWidth,"height":gridHeight}
+		  /// }
+
+		  MapParam param;
+		  try {
+		    param.globalPositionOfCenter.x = doc["globalPositionOfCenter"]["x"].GetDouble();
+		    param.globalPositionOfCenter.y = doc["globalPositionOfCenter"]["y"].GetDouble();
+		    param.globalPositionOfCenter.a = doc["globalPositionOfCenter"]["a"].GetDouble();
+		    param.sizeOfMap.w = doc["sizeOfMap"]["width"].GetDouble();
+		    param.sizeOfMap.h = doc["sizeOfMap"]["height"].GetDouble();
+		    param.sizeOfGrid.w = doc["sizeOfGrid"]["width"].GetDouble();
+		    param.sizeOfGrid.h = doc["sizeOfGrid"]["height"].GetDouble();
+		    /*
+		    auto vs = doc.getObject();
+		    for(auto& v : vs) {
+		      if (v.name.GetString() == "globalPositionOfCenter") {
+			auto cs = v.value.GetObject();
+			for(auto& c : cs) {
+			  
+			}
+		      }
+		      }*/
+		  } catch (std::exception& ex) {
+
+		    res.status = 402;
+		    res.version = "1.0";
+		    res.body = "Invalid JSON data";
+		    return;
+		  }
+
+			if (m_pRTC->refreshMap(param)) {
 				res.status = 200;
 				res.version = "1.0";
 				res.body = toJson(m_pRTC->getMapConfig());

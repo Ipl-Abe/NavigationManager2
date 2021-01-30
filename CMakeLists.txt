@@ -120,6 +120,7 @@ if(BUILD_DOCUMENTATION)
 endif(BUILD_DOCUMENTATION)
 
 add_subdirectory(cpp-httplib)
+add_subdirectory(rapidjson)
 #if(BUILD_EXAMPLES)
 #    add_subdirectory(examples)
 #endif(BUILD_EXAMPLES)

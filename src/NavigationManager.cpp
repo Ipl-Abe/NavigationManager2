@@ -78,17 +78,17 @@ bool NavigationManager::refreshPF() {
   return true;
 }
 
-bool NavigationManager::refreshMap() {
+bool NavigationManager::refreshMap(const MapParam& req_param) {
   std::cout << "[NavigationManager] NavigationManager::refreshMap() called." << std::endl;  
   NAVIGATION::OccupancyGridMap_var map;
-  NAVIGATION::OccupancyGridMapRequestParam_var param;
-  param.globalPositionOfCenter.position.x = 0;
-  param.globalPositionOfCenter.position.y = 0;
-  param.globalPositionOfCenter.heading = 0;
-  param.sizeOfMap.l = -1; // Negative Value ... Maximum Size.
-  param.sizeOfMap.w = -1; // Negative Value ... Maximum Size.
-  param.sizeOfGrid.l = 0.05;
-  param.sizeOfGrid.w = 0.05;
+  NAVIGATION::OccupancyGridMapRequestParam_var param(new NAVIGATION::OccupancyGridMapRequestParam());;
+  param->globalPositionOfCenter.position.x = req_param.globalPositionOfCenter.x;
+  param->globalPositionOfCenter.position.y = req_param.globalPositionOfCenter.y;
+  param->globalPositionOfCenter.heading = req_param.globalPositionOfCenter.a;
+  param->sizeOfMap.l = req_param.sizeOfMap.h; // Negative Value ... Maximum Size.
+  param->sizeOfMap.w = req_param.sizeOfMap.w; // Negative Value ... Maximum Size.
+  param->sizeOfGrid.l = req_param.sizeOfGrid.h;
+  param->sizeOfGrid.w = req_param.sizeOfGrid.w;
   auto ret = m_NAVIGATION_OccupancyGridMapServer->requestLocalMap(param, map);
   if (ret != NAVIGATION::MAP_RETVAL_OK) {
       std::cout << "[NavigationManager] failed to get map" << std::endl;

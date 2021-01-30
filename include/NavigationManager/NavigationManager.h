@@ -42,6 +42,22 @@
 
 #include "HttpServer.h"
 
+struct Pose {
+  double x, y, a;
+};
+
+struct Size {
+  double w,h;
+};
+
+struct MapParam {
+  Pose globalPositionOfCenter;
+  Size sizeOfMap;
+  Size sizeOfGrid;
+};
+  
+ 
+
 /*!
  * @class NavigationManager
  * @brief Navigation Manager Component On the WEB
@@ -291,7 +307,7 @@ class NavigationManager
   HttpServer* m_pServer;
 
 public:
-  bool refreshMap();
+  bool refreshMap(const MapParam& param);
 
   std::mutex mcl_mutex_;
   NAVIGATION::MCLInfo_var m_mclInfo;

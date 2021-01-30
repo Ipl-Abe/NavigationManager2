@@ -34,12 +34,14 @@ if (DEFINED OPENRTM_LIBRARIES)
 endif (DEFINED OPENRTM_LIBRARIES)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/cpp-httplib)
 include_directories(${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/idl)
 include_directories(${OPENRTM_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
+
+include_directories(${PROJECT_SOURCE_DIR}/cpp-httplib)
+include_directories(${PROJECT_SOURCE_DIR}/rapidjson/include)
 
 add_definitions(${OPENRTM_CFLAGS})
 
