@@ -4,14 +4,14 @@
   <link rel="stylesheet" type="text/css" href="default.css" />
   <script type="text/javascript">
 
+/// DOMのロードが終わった時の処理予約
+window.addEventListener('DOMContentLoaded', () => {
+  // updateParamFileList(); // パラメータファイルのリストを取得してドロップダウンを準備
+  // window.requestAnimationFrame(main); // アニメーションの予約
+  setInterval(main, 100);
+});
+
 /// キーイベントの送信APIを使用
-/// param: key キーイベント番号。
-/// - OK:    1
-/// - BACK:  2
-/// - UP:    6
-/// - LEFT:  8
-/// - RIGHT: 9
-/// - DOWN:  7
 function sendKey(key) {
   var request = new XMLHttpRequest();
   request.open("PUT", "/api/key", true); 
@@ -114,7 +114,7 @@ function requestMapInfo(){
   if (c % 100 == 1) {
 	  // TODO: ここを修正してマップが部分マップを取れるようにできるか検証すべき（多分できる）
 	  let param = {};
-	  param.globalPositionOfCenter = {x: 0, y: 0};
+	  param.globalPositionOfCenter = {x: 0, y: 0, a:0};
 	  param.sizeOfMap = {width: -1, height: -1};
 	  param.sizeOfGrid = {width: 0.05, height: 0.05};
       refreshMap(param);
@@ -185,152 +185,167 @@ var guidance = "";
 var marker = undefined
 var pfInfo;
 
-/// この関数がAnimationで周期的に呼ばれる
-function main() {
+let drawInfo = {
+	origin: [0, 0],
+	zoom: 1.0,
+	robotSize: [20, 10]
+};
 
-  /// These parameters are modified for ah01's tests.
-  var robotSize = [20, 10];
-  var zoom = 1.;
-  var origin = [0, 0];
+let drawMap = (ctx, img, drawInfo, mapInfo) => {
+    if (img === undefined) return; 
+    if (mapInfo === undefined) return; 
+	/// マップの画像を書き込む
+    ctx.drawImage(img, drawInfo.origin[0]/drawInfo.zoom, drawInfo.origin[1]/drawInfo.zoom, mapInfo.image_columns/drawInfo.zoom, mapInfo.image_rows/drawInfo.zoom);
+};
 
-  /// 周期的にマップ画像を取得
-  requestImage().then(function(img){
-    /// マップ画像がきたら・・・・
-    if (mapInfo == undefined) return;
-    if (currentPose === undefined) return; 
+let drawTextInfo = (ctx, currentPose, mapInfo) => {
 
-    /// マップの画像を書き込む
-    var ctx = document.getElementById('main_canvas').getContext('2d');
-    ctx.drawImage(img, origin[0]/zoom, origin[1]/zoom, mapInfo.image_columns/zoom, mapInfo.image_rows/zoom);
-
+	if (currentPose === undefined) return; 
+    if (mapInfo === undefined) return; 
+	
     /// 文字列を表示する
     ctx.font = '24px';
     ctx.fillStyle = 'rgb(255,255,255)';
-    ctx.fillText("------------------ MESSAGE ---------------------", 10, 10)
-    //console.log(guidance.data.split('<br />'));
-    //var msgs = guidance.data.split('<br/>');
-    var y = 25; var step = 15;
-    //msgs.forEach(function(msg) {
-    //  ctx.fillText(msg, 10, y);
-    //  y += step;
-    //});
-
     ctx.fillText("------------------ DEBUG ---------------------", 10, 650)
     ctx.fillText("currentPose:" + JSON.stringify(currentPose), 10, 665);
     ctx.fillText("mapInfo    :"+JSON.stringify(mapInfo), 10, 680);
+}
 
-
-	
-
+let drawPath = () => {
     /// 全体のジグザグ軌道を表示する
     if (path !== undefined) {
-      var pathInPx = path.path.map(function(wp){return pxPosition(mapInfo, wp);});
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo((pathInPx[0].x + origin[0])/zoom, (pathInPx[0].y + origin[1])/zoom);
-      for (var i = 1;i < pathInPx.length;i++) {
-        ctx.lineTo((pathInPx[i].x + origin[0])/zoom, (pathInPx[i].y + origin[1])/zoom);
-      }
-      ctx.stroke();
-	}
-	
-	// PFの表示
-	if (pfInfo) {
-		for(var p of pfInfo.ps) {
-			// console.log(p.p);
-			let w  = p.w / pfInfo.maxW;
-
-			let pInPx = {'position': pxPosition(mapInfo, {x:p.p[0], y:p.p[1]}),
-						'heading': p.p[2]};
-						
-			ctx.translate((pInPx.position.x + origin[0])/zoom,
-						(pInPx.position.y + origin[1])/zoom);
-			ctx.rotate(-pInPx.heading);
-
-			/// ロボットの本体を表示。白は本体。黄色はカメラ部分
-			ctx.strokeStyle = 'purple';
-			let r = 255 * w;
-			// console.log(r, w);
-			let g = 0;
-			let b = 255 * (1-w)
-			ctx.fillStyle = "#"+(r).toString(16).padStart(2,'0')+(g).toString(16).padStart(2,'0')+(b).toString(16).padStart(2,'0');  
-			console.log(ctx.fillStyle);
-			ctx.fillRect(-robotSize[0]/4, -robotSize[1]/4, robotSize[0]/2, robotSize[1]/2);     
-
-			/// ロボットの位置・姿勢への回転を元に戻す
-			ctx.rotate(pInPx.heading);
-			ctx.translate(-(pInPx.position.x + origin[0])/zoom,
-						-(pInPx.position.y + origin[1])/zoom);
-						
+		var pathInPx = path.path.map(function(wp){return pxPosition(mapInfo, wp);});
+		ctx.strokeStyle = 'blue';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo((pathInPx[0].x + origin[0])/zoom, (pathInPx[0].y + origin[1])/zoom);
+		for (var i = 1;i < pathInPx.length;i++) {
+		ctx.lineTo((pathInPx[i].x + origin[0])/zoom, (pathInPx[i].y + origin[1])/zoom);
 		}
+		ctx.stroke();
 	}
+};
 
+let drawPF = (ctx, pfInfo, drawInfo) => {
 
+	if (pfInfo == undefined) { return; }
+	let minW = 1000000;
+	for(let p of pfInfo.ps) {
+		if (p.w < minW) minW = p.w;
+	}
+	for(var p of pfInfo.ps) {
+		// console.log(p.p);
+		let w  = 1.0; 
+		if (minW != pfInfo.maxW) {
+			w = (p.w-minW) / (pfInfo.maxW-minW);
+		}
 
+		let pInPx = {'position': pxPosition(mapInfo, {x:p.p[0], y:p.p[1]}),
+					'heading': p.p[2]};
+					
+		ctx.translate((pInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
+					(pInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
+		ctx.rotate(-pInPx.heading);
+
+		/// ロボットの本体を表示。白は本体。黄色はカメラ部分
+		ctx.strokeStyle = 'purple';
+		let r = 255 * w;
+		// console.log(r, w);
+		let g = 0;
+		let b = 255 * (1-w)
+		ctx.fillStyle = "#"+(r).toString(16).padStart(2,'0')+(g).toString(16).padStart(2,'0')+(b).toString(16).padStart(2,'0');  
+		//console.log(ctx.fillStyle);
+		ctx.fillRect(-drawInfo.robotSize[0]/4, -drawInfo.robotSize[1]/8, drawInfo.robotSize[0]/2, drawInfo.robotSize[1]/4);     
+
+		/// ロボットの位置・姿勢への回転を元に戻す
+		ctx.rotate(pInPx.heading);
+		ctx.translate(-(pInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
+					-(pInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
+					
+	}
+}
+
+let drawRobotAndLaser = (ctx, mapInfo, drawInfo, currentPose, scan) => {
+	if (currentPose === undefined) return; 
+    if (mapInfo === undefined) return; 
+	
     /// ロボットの位置と姿勢をピクセル単位に修正
     let robotPoseInPx = {'position': pxPosition(mapInfo, currentPose.data.position),
                         'heading': currentPose.data.heading };
     //ctx.fillText(JSON.stringify(robotPoseInPx), 10, 110);
 
     /// まず、ロボットの位置・姿勢の分だけContext2Dを移動・回転
-    ctx.translate((robotPoseInPx.position.x + origin[0])/zoom,
-                (robotPoseInPx.position.y + origin[1])/zoom);
+    ctx.translate((robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
+                (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
     ctx.rotate(-robotPoseInPx.heading);
 
     /// ロボットの本体を表示。白は本体。黄色はカメラ部分
     ctx.fillStyle = 'green';      
-    ctx.fillRect(-robotSize[0]/2, -robotSize[1]/2, robotSize[0], robotSize[1]);     
+    ctx.fillRect(-drawInfo.robotSize[0]/2, -drawInfo.robotSize[1]/2, drawInfo.robotSize[0], drawInfo.robotSize[1]);     
 
     /// レーザースキャンを書き込む
     if (scan !== undefined) {
-      /// レーザースキャンはロボット本体の原点からオフセットしているのでその分だけさらに移動
-      ctx.translate(scan.base2laser[0]/mapInfo.x_scale/zoom,scan.base2laser[1]/mapInfo.y_scale/zoom)
-
-      /// レーザースキャンの距離と角度から点の位置を計算
-      var th = scan.amin;
-      ctx.fillStyle = 'orange'; 
-      scan.ranges.forEach(function(r) {
-        var x = r * Math.cos(th)/mapInfo.x_scale/zoom;
-        var y = -r * Math.sin(th)/mapInfo.y_scale/zoom;
-        th = th + scan.ares * scan.step;
-        ctx.fillRect(x-1,y-1,2,2);
-      });
-      /// ロボットの原点に戻す
-      ctx.translate(-scan.base2laser[0]/mapInfo.xScale/zoom,-scan.base2laser[1]/mapInfo.yScale/zoom)
+        drawScanInRobotFrame(ctx, mapInfo, drawInfo, scan)
     } /// レーザースキャンの書き込み完了
 
     /// ロボットの位置・姿勢への回転を元に戻す
     ctx.rotate(robotPoseInPx.heading);
-    ctx.translate(-(robotPoseInPx.position.x + origin[0])/zoom,
-                  -(robotPoseInPx.position.y + origin[1])/zoom);
-	 
+    ctx.translate(-(robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
+                  -(robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
+}
+
+let drawScanInRobotFrame = (ctx, mapInfo, drawInfo, scan) => {
+	if (scan === undefined) return;
+
+	/// レーザースキャンはロボット本体の原点からオフセットしているのでその分だけさらに移動
+	ctx.translate(scan.base2laser[0]/mapInfo.x_scale/drawInfo.zoom,scan.base2laser[1]/mapInfo.y_scale/drawInfo.zoom)
+
+	/// レーザースキャンの距離と角度から点の位置を計算
+	var th = scan.amin;
+	ctx.fillStyle = 'orange'; 
+	scan.ranges.forEach(function(r) {
+		var x = r * Math.cos(th)/mapInfo.x_scale/drawInfo.zoom;
+		var y = -r * Math.sin(th)/mapInfo.y_scale/drawInfo.zoom;
+		th = th + scan.ares * scan.step;
+		ctx.fillRect(x-1,y-1,2,2);
+	});
+	/// ロボットの原点に戻す
+	ctx.translate(-scan.base2laser[0]/mapInfo.xScale/drawInfo.zoom,-scan.base2laser[1]/mapInfo.yScale/drawInfo.zoom)
+}
+
+
+let updateCanvas = (img, drawInfo, mapInfo, currentPose, scan, pfInfo) => {
+    let ctx = document.getElementById('main_canvas').getContext('2d');
+	drawMap(ctx, img, drawInfo, mapInfo);
+	drawTextInfo(ctx, currentPose, mapInfo);
+
+	// PFの表示
+	drawPF(ctx, pfInfo, drawInfo);
+	drawRobotAndLaser(ctx, mapInfo, drawInfo, currentPose, scan);
+};
+
+/// この関数がAnimationで周期的に呼ばれる
+function main() {
 	
+  /// 周期的にマップ画像を取得
+  requestImage().then(function(img){
+	updateCanvas(img, drawInfo, mapInfo, currentPose, scan, pfInfo);
   });
 
   /// 再度、アニメーションでmain関数を呼ぶ予約をする
   // window.requestAnimationFrame(main);
 
   /// 各種のデータを取得してグローバル変数に書き込む
-  requestScan().then(function(_scan){ scan = _scan; });
-  //requestPath().then(function(_path){ path = _path; });
-  //requestCurrentPath().then(function(_path){ currentPath = _path; });
-  requestPose().then(function(pose){currentPose = pose;});
-  requestMapInfo().then(function(info){mapInfo = info; });
-  cp += 1;
-  if (cp % 3 == 0)
-    requestParticles().then(function(info) { pfInfo = info; });
-  //requestGuidance().then(function(g){guidance = g; });
-  //requestMarker().then(function(m){marker = m; });
 
+  cp += 1;
+  if (cp % 10 == 0) {
+	requestPose().then(function(pose){currentPose = pose;});
+	requestScan().then(function(_scan){ scan = _scan; });
+    requestMapInfo().then(function(info){mapInfo = info; });
+    requestParticles().then(function(info) { pfInfo = info; });
+  }
 };
 
-/// DOMのロードが終わった時の処理予約
-window.addEventListener('DOMContentLoaded', function() {
-  // updateParamFileList(); // パラメータファイルのリストを取得してドロップダウンを準備
-  // window.requestAnimationFrame(main); // アニメーションの予約
-  setInterval(main, 100);
-});
 
   </script>
 </head>
