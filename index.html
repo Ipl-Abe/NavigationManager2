@@ -1,4 +1,4 @@
-<!DOCTYPE html><html>
+﻿<!DOCTYPE html><html>
 <head lang="en">
   <meta charset="utf-8" />
   <link rel="stylesheet" type="text/css" href="default.css" />
@@ -114,9 +114,11 @@ function requestMapInfo(){
   if (c % 100 == 1) {
 	  // TODO: ここを修正してマップが部分マップを取れるようにできるか検証すべき（多分できる）
 	  let param = {};
-	  param.globalPositionOfCenter = {x: 0, y: 0, a:0};
-	  param.sizeOfMap = {width: -1, height: -1};
+	  param.globalPositionOfCenter = {x: 0, y: 10, a:0};
+	  param.sizeOfMap = {width:30, height: 20};
 	  param.sizeOfGrid = {width: 0.05, height: 0.05};
+      drawInfo.origin[0] = -(param.globalPositionOfCenter.x - param.sizeOfMap.width  / 2) / param.sizeOfGrid.width;
+      drawInfo.origin[1] = (param.globalPositionOfCenter.y + param.sizeOfMap.height / 2) / param.sizeOfGrid.height;
       refreshMap(param);
   }
   return requestObject('/api/map/config');
@@ -149,8 +151,8 @@ function requestImage() {
 
 /// positionのデータを、mapInfoによってマップ上のピクセル単位の位置に変換
 function pxPosition(mapInfo, position) {
-  return {'x': (-mapInfo.globalPositionOfTopLeft_x + position.x) / mapInfo.x_scale,
-          'y': (mapInfo.globalPositionOfTopLeft_y - position.y) / mapInfo.y_scale};
+  return {'x': (position.x) / mapInfo.x_scale,
+          'y': -(position.y) / mapInfo.y_scale};
 }
 
 
@@ -195,20 +197,18 @@ let drawMap = (ctx, img, drawInfo, mapInfo) => {
     if (img === undefined) return; 
     if (mapInfo === undefined) return; 
 	/// マップの画像を書き込む
-    ctx.drawImage(img, drawInfo.origin[0]/drawInfo.zoom, drawInfo.origin[1]/drawInfo.zoom, mapInfo.image_columns/drawInfo.zoom, mapInfo.image_rows/drawInfo.zoom);
+    ctx.drawImage(img, 0, 0, mapInfo.image_columns/drawInfo.zoom, mapInfo.image_rows/drawInfo.zoom);
 };
 
-let drawTextInfo = (ctx, currentPose, mapInfo) => {
-
+let drawTextInfo = (currentPose, mapInfo) => {
+    let ctx = document.getElementById('debug_msg');
 	if (currentPose === undefined) return; 
     if (mapInfo === undefined) return; 
 	
-    /// 文字列を表示する
-    ctx.font = '24px';
-    ctx.fillStyle = 'rgb(255,255,255)';
-    ctx.fillText("------------------ DEBUG ---------------------", 10, 650)
-    ctx.fillText("currentPose:" + JSON.stringify(currentPose), 10, 665);
-    ctx.fillText("mapInfo    :"+JSON.stringify(mapInfo), 10, 680);
+    ctx.innerHTML = "------------------ DEBUG ---------------------<br>" + 
+      "currentPose:" + JSON.stringify(currentPose) + "<br>" + 
+      "mapInfo    :"+JSON.stringify(mapInfo) + "<br>" +
+      "drawInfo   :" +JSON.stringify(drawInfo);
 }
 
 let drawPath = () => {
@@ -277,6 +277,8 @@ let drawRobotAndLaser = (ctx, mapInfo, drawInfo, currentPose, scan) => {
     /// まず、ロボットの位置・姿勢の分だけContext2Dを移動・回転
     ctx.translate((robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
                 (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
+    console.log("robot pose", (robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
+                (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
     ctx.rotate(-robotPoseInPx.heading);
 
     /// ロボットの本体を表示。白は本体。黄色はカメラ部分
@@ -287,11 +289,6 @@ let drawRobotAndLaser = (ctx, mapInfo, drawInfo, currentPose, scan) => {
     if (scan !== undefined) {
         drawScanInRobotFrame(ctx, mapInfo, drawInfo, scan)
     } /// レーザースキャンの書き込み完了
-
-    /// ロボットの位置・姿勢への回転を元に戻す
-    ctx.rotate(robotPoseInPx.heading);
-    ctx.translate(-(robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
-                  -(robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
 }
 
 let drawScanInRobotFrame = (ctx, mapInfo, drawInfo, scan) => {
@@ -315,9 +312,15 @@ let drawScanInRobotFrame = (ctx, mapInfo, drawInfo, scan) => {
 
 
 let updateCanvas = (img, drawInfo, mapInfo, currentPose, scan, pfInfo) => {
-    let ctx = document.getElementById('main_canvas').getContext('2d');
+    let canvas = document.getElementById('main_canvas');
+    if (mapInfo !== undefined) {
+      let size = Math.max(mapInfo.image_rows/drawInfo.zoom, mapInfo.image_columns/drawInfo.zoom);
+      canvas.width = size;
+      canvas.height = size;
+    }
+    
+    let ctx = canvas.getContext('2d');
 	drawMap(ctx, img, drawInfo, mapInfo);
-	drawTextInfo(ctx, currentPose, mapInfo);
 
 	// PFの表示
 	drawPF(ctx, pfInfo, drawInfo);
@@ -340,9 +343,12 @@ function main() {
   cp += 1;
   if (cp % 10 == 0) {
 	requestPose().then(function(pose){currentPose = pose;});
+    console.log(drawInfo);
 	requestScan().then(function(_scan){ scan = _scan; });
     requestMapInfo().then(function(info){mapInfo = info; });
-    requestParticles().then(function(info) { pfInfo = info; });
+    requestParticles().then(function(info) { pfInfo = info; });	
+    drawTextInfo(currentPose, mapInfo);
+
   }
 };
 
@@ -351,7 +357,7 @@ function main() {
 </head>
 <body>
   <div style="float:left;">
-  <canvas id="main_canvas" width="900px" height="900px" >
+  <canvas id="main_canvas" width="499px" height="499px" >
   </canvas>
   </div>
   <div style="text-align:center;">
@@ -373,6 +379,8 @@ function main() {
     <textarea name="kansou" id="param_file_text" rows="10" cols="40">Please Select Param Filename</textarea><br>
     <input type="submit" value="Submit" onclick="onSubmitParam()"> <input type="submit" value="Load Default" onclick="onLoadDefault()">
     <div id="response_area"></div>
+  </div>
+  <div style="position: absolute; bottom: 10px;" id="debug_msg">
   </div>
 </body>
 
