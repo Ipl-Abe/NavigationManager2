@@ -193,6 +193,9 @@ RTC::ReturnCode_t NavigationManager::onActivated(RTC::UniqueId ec_id)
   m_currentRobotPose.data.position.x = 0;
   m_currentRobotPose.data.position.y = 0;
   m_currentRobotPose.data.heading = 0;
+
+
+  m_targetVelocity.data.vx = m_targetVelocity.data.vy = m_targetVelocity.data.va = 0;
   return RTC::RTC_OK;
 }
 
