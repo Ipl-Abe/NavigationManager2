@@ -68,6 +68,30 @@ bool NavigationManager::refreshPF() {
   std::cout << "[NavigationManager] NavigationManager::refreshPF() called." << std::endl;
   std::lock_guard<std::mutex> g(mcl_mutex_);
   //NAVIGATION::MCLInfo_var info(new NAVIGATION::MCLInfo());
+  RTC::ConnectorProfileList_var conProfList(m_mclServicePort.get_connector_profiles());
+  if (conProfList->length() == 0) {
+	  RTC_ERROR(("NavigationManager::refreshPF() called. But no connection."));
+	  return false;
+  } 
+  auto& conProf = conProfList[0];
+  for (int i = 0; i < 2; i++) {
+	  RTC::PortProfile_var pprof(conProfList[0].ports[i]->get_port_profile());
+	  RTC::ComponentProfile_var cprof(pprof->owner->get_component_profile());
+	  if (this->getInstanceName() != cprof->instance_name) {
+		  RTC::ExecutionContextList_var ecList(pprof->owner->get_owned_contexts());
+		  if (ecList->length() == 0) {
+			  RTC_ERROR(("NavigationManager::refreshPF() failed. Connected Component does not have EC."));
+			  return false;
+		  }
+		  RTC::LifeCycleState state = ecList[0]->get_component_state(pprof->owner);
+		  if (state != RTC::LifeCycleState::ACTIVE_STATE) {
+			  RTC_WARN(("NavigationManager::refreshPF() failed. Connected Component is not activated."));
+			  std::cout << (("NavigationManager::refreshPF() failed. Connected Component is not activated.")) << std::endl;;
+			  return false;
+		  }
+		  break;
+	  }
+  }
   auto ret = m_NAVIGATION_MonteCarloLocalization->requestParticles(m_mclInfo);
   if (ret != NAVIGATION::MCL_RETVAL_OK) {
     std::cout << "[NavigationManager] failed to get pf" << std::endl;
