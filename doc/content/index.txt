@@ -121,6 +121,8 @@ range           InPort      RTC::RangeData
 targetVelocity  OutPort     RTC::TimedVelocity2D           
 NAVIGATION_OccupancyGridMapServer ServicePort NAVIGATION::OccupancyGridMapServer 
 NAVIGATION_MonteCarloLocalization ServicePort NAVIGATION::MonteCarloLocalization 
+NAVIGATION_PathPlanner ServicePort NAVIGATION::PathPlanner        
+NAVIGATION_OccupancyGridMapper ServicePort NAVIGATION::OccupancyGridMapper 
 =============== =========== ============================== =======
 
 Examples

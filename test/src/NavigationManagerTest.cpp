@@ -16,7 +16,7 @@ static const char* navigationmanager_spec[] =
     "implementation_id", "NavigationManagerTest",
     "type_name",         "NavigationManagerTest",
     "description",       "Navigation Manager Component On the WEB",
-    "version",           "1.0.0",
+    "version",           "1.1.0",
     "vendor",            "Sugar Sweet Robotics",
     "category",          "Navigation",
     "activity_type",     "PERIODIC",
@@ -39,7 +39,9 @@ NavigationManagerTest::NavigationManagerTest(RTC::Manager* manager)
     m_rangeIn("range", m_range),
     m_targetVelocityOut("targetVelocity", m_targetVelocity),
     m_mapServerPort("mapServer"),
-    m_mclServicePort("mclService")
+    m_mclServicePort("mclService"),
+    m_pathPlannerPort("pathPlanner"),
+    m_mapperPort("mapper")
 
     // </rtc-template>
 {
@@ -68,12 +70,16 @@ RTC::ReturnCode_t NavigationManagerTest::onInitialize()
   // Set service provider to Ports
   m_mapServerPort.registerProvider("NAVIGATION_OccupancyGridMapServer", "NAVIGATION::OccupancyGridMapServer", m_NAVIGATION_OccupancyGridMapServer);
   m_mclServicePort.registerProvider("NAVIGATION_MonteCarloLocalization", "NAVIGATION::MonteCarloLocalization", m_NAVIGATION_MonteCarloLocalization);
+  m_pathPlannerPort.registerProvider("NAVIGATION_PathPlanner", "NAVIGATION::PathPlanner", m_NAVIGATION_PathPlanner);
+  m_mapperPort.registerProvider("NAVIGATION_OccupancyGridMapper", "NAVIGATION::OccupancyGridMapper", m_NAVIGATION_OccupancyGridMapper);
 
   // Set service consumers to Ports
 
   // Set CORBA Service Ports
   addPort(m_mapServerPort);
   addPort(m_mclServicePort);
+  addPort(m_pathPlannerPort);
+  addPort(m_mapperPort);
 
   // </rtc-template>
 

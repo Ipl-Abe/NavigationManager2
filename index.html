@@ -47,25 +47,33 @@ function requestObject(url){
 /// 指定されたURLからGETメソッドでjsonファイルを取得して
 /// parseしてJavascriptのobjectを取得するメソッド
 /// 失敗したら空のオブジェクトが還ります。
-function refreshMap(param){
-  let url = "/api/map/refresh"
-  var ret = {};
-  /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
-  /// ラムダ式が使えない。Ubuntu14.04略
-	var request = new XMLHttpRequest(); 
-    request.open("PUT", url, true);
-    request.send(JSON.stringify(param));
-    request.onreadystatechange = function(){
-      if(request.readyState == 4){
-        if(request.status == 200){
-          //func(JSON.parse(request.responseText));
-        } else {
+// function refreshMap(param) {
+//   let url = "/api/map/refresh"
+//   var ret = {};
+//   /// Promiseが使えない。Ubuntu14.04のFirefoxが対応していない
+//   /// ラムダ式が使えない。Ubuntu14.04略
+// 	var request = new XMLHttpRequest(); 
+//     request.open("PUT", url, true);
+// //     request.send(JSON.stringify(param));
+//     request.onreadystatechange = function(){
+//       if(request.readyState == 4){
+//         if(request.status == 200){
+//           func(JSON.parse(request.responseText));
+//         } else {
 //            reject();
-        }
-      }
-    }
-  
-};
+//         }
+//       }
+//     }
+// };
+
+async function refresh_map(param) {
+  let url = "/api/map/refresh"
+  const res = await fetch(url, {
+        method: 'PUT',
+        body: JSON.stringify(param)
+    });
+  return await res.json();
+}
 
 function refreshPF(){
   console.log('refreshing PF.....');
@@ -97,6 +105,11 @@ function requestPose(){
   return requestObject('/api/currentRobotPose');
 };
 
+async function request_pose() {
+  const res = await fetch('/api/currentRobotPose');
+  return await res.json();
+}
+
 /// 現在の計画軌道全体を取得
 function requestPath(){
   return requestObject('/planner/path');
@@ -115,11 +128,16 @@ function requestMapInfo(){
 	  // TODO: ここを修正してマップが部分マップを取れるようにできるか検証すべき（多分できる）
 	  let param = {};
 	  param.globalPositionOfCenter = {x: 0, y: 10, a:0};
-	  param.sizeOfMap = {width:30, height: 20};
+	  param.sizeOfMap = {width:-1, height: -1};
 	  param.sizeOfGrid = {width: 0.05, height: 0.05};
-      drawInfo.origin[0] = -(param.globalPositionOfCenter.x - param.sizeOfMap.width  / 2) / param.sizeOfGrid.width;
-      drawInfo.origin[1] = (param.globalPositionOfCenter.y + param.sizeOfMap.height / 2) / param.sizeOfGrid.height;
-      refreshMap(param);
+    //  drawInfo.origin[0] = -(param.globalPositionOfCenter.x - param.sizeOfMap.width  / 2) / param.sizeOfGrid.width;
+    //  drawInfo.origin[1] = (param.globalPositionOfCenter.y + param.sizeOfMap.height / 2) / param.sizeOfGrid.height;
+    refresh_map(param).then((mapConf) => {
+      console.log(mapConf);
+      drawInfo.origin[0] = -(mapConf.globalPositionOfTopLeft_x ) / mapConf.x_scale;
+      drawInfo.origin[1] = (mapConf.globalPositionOfTopLeft_y ) / mapConf.y_scale;
+    });
+    
   }
   return requestObject('/api/map/config');
 };
@@ -278,7 +296,7 @@ let drawRobotAndLaser = (ctx, mapInfo, drawInfo, currentPose, scan) => {
     ctx.translate((robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
                 (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
     console.log("robot pose", (robotPoseInPx.position.x + drawInfo.origin[0])/drawInfo.zoom,
-                (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom);
+                (robotPoseInPx.position.y + drawInfo.origin[1])/drawInfo.zoom, robotPoseInPx.heading);
     ctx.rotate(-robotPoseInPx.heading);
 
     /// ロボットの本体を表示。白は本体。黄色はカメラ部分
@@ -342,7 +360,10 @@ function main() {
 
   cp += 1;
   if (cp % 10 == 0) {
-	requestPose().then(function(pose){currentPose = pose;});
+	request_pose().then((pose) => {
+    console.log('currentPose:', pose);
+    currentPose = pose;
+  });
     console.log(drawInfo);
 	requestScan().then(function(_scan){ scan = _scan; });
     requestMapInfo().then(function(info){mapInfo = info; });

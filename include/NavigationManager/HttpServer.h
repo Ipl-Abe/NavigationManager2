@@ -4,7 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include "InterfaceDataTypes.hh"
-#include "MobileRobotNavigation.hh"
+#include "NavigationDataType.hh"
+#include "MCL.hh"
 class NavigationManager;
 
 class HttpServer;

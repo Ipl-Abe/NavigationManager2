@@ -1,11 +1,7 @@
 set(comp_srcs HttpServer.cpp NavigationManager.cpp )
-set(standalone_srcs HttpServer.cpp NavigationManagerComp.cpp)
+set(standalone_srcs NavigationManagerComp.cpp)
 
 find_package(OpenCV REQUIRED)
-if(WIN32)
-  add_definitions(-D _WIN32_WINNT=0x0A00)
-endif(WIN32)
-
 if(${OPENRTM_VERSION_MAJOR} LESS 2)
   set(OPENRTM_CFLAGS ${OPENRTM_CFLAGS} ${OMNIORB_CFLAGS})
   set(OPENRTM_INCLUDE_DIRS ${OPENRTM_INCLUDE_DIRS} ${OMNIORB_INCLUDE_DIRS})
@@ -39,10 +35,8 @@ include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/idl)
 include_directories(${OPENRTM_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
-
 include_directories(${PROJECT_SOURCE_DIR}/cpp-httplib)
 include_directories(${PROJECT_SOURCE_DIR}/rapidjson/include)
-
 add_definitions(${OPENRTM_CFLAGS})
 
 MAP_ADD_STR(comp_hdrs "../" comp_headers)

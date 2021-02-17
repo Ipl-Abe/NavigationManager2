@@ -16,7 +16,10 @@
 
 // Service implementation headers
 // <rtc-template block="service_impl_h">
-#include "MobileRobotNavigationSVC_impl.h"
+#include "MapServerSVC_impl.h"
+#include "MCLSVC_impl.h"
+#include "PathPlannerSVC_impl.h"
+#include "MapperSVC_impl.h"
 #include "ExtendedDataTypesSVC_impl.h"
 #include "InterfaceDataTypesSVC_impl.h"
 
@@ -263,6 +266,12 @@ class NavigationManagerTest
   /*!
    */
   RTC::CorbaPort m_mclServicePort;
+  /*!
+   */
+  RTC::CorbaPort m_pathPlannerPort;
+  /*!
+   */
+  RTC::CorbaPort m_mapperPort;
   
   // </rtc-template>
 
@@ -274,6 +283,12 @@ class NavigationManagerTest
   /*!
    */
   MonteCarloLocalizationSVC_impl m_NAVIGATION_MonteCarloLocalization;
+  /*!
+   */
+  PathPlannerSVC_impl m_NAVIGATION_PathPlanner;
+  /*!
+   */
+  OccupancyGridMapperSVC_impl m_NAVIGATION_OccupancyGridMapper;
   
   // </rtc-template>
 

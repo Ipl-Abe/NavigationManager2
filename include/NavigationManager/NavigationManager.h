@@ -21,7 +21,10 @@
 
 // Service Consumer stub headers
 // <rtc-template block="consumer_stub_h">
-#include "MobileRobotNavigationStub.h"
+#include "MapServerStub.h"
+#include "MCLStub.h"
+#include "PathPlannerStub.h"
+#include "MapperStub.h"
 #include "ExtendedDataTypesStub.h"
 #include "InterfaceDataTypesStub.h"
 
@@ -56,8 +59,6 @@ struct MapParam {
   Size sizeOfGrid;
 };
   
- 
-
 /*!
  * @class NavigationManager
  * @brief Navigation Manager Component On the WEB
@@ -67,7 +68,6 @@ class NavigationManager
   : public RTC::DataFlowComponentBase
 {
  public:
-  friend class HttpServer;
   /*!
    * @brief constructor
    * @param manager Maneger Object
@@ -241,9 +241,7 @@ class NavigationManager
   // <rtc-template block="config_declare">
   std::string m_base_dir;
   std::string m_address;
-  int m_port;
-
-  
+  int m_port; 
   // </rtc-template>
 
   // DataInPort declaration
@@ -277,6 +275,12 @@ class NavigationManager
   /*!
    */
   RTC::CorbaPort m_mclServicePort;
+  /*!
+   */
+  RTC::CorbaPort m_pathPlannerPort;
+  /*!
+   */
+  RTC::CorbaPort m_mapperPort;
   
   // </rtc-template>
 
@@ -293,6 +297,12 @@ class NavigationManager
   /*!
    */
   RTC::CorbaConsumer<NAVIGATION::MonteCarloLocalization> m_NAVIGATION_MonteCarloLocalization;
+  /*!
+   */
+  RTC::CorbaConsumer<NAVIGATION::PathPlanner> m_NAVIGATION_PathPlanner;
+  /*!
+   */
+  RTC::CorbaConsumer<NAVIGATION::OccupancyGridMapper> m_NAVIGATION_OccupancyGridMapper;
   
   // </rtc-template>
 
@@ -316,8 +326,8 @@ public:
   NavigationMapConfig m_mapConfig;
 
   void keyEvent(const std::string& val) {
-    const double vx = 1.0;
-    const double va = 1.0;
+    const double vx = 0.5;
+    const double va = 0.5;
     if (val == "1") {
       m_targetVelocity.data.vx = vx;
       m_targetVelocity.data.vy = 0;
@@ -350,7 +360,6 @@ public:
   const NavigationMapConfig& getMapConfig() { return m_mapConfig; }
   const NAVIGATION::MCLInfo& getMCLInfo() { return m_mclInfo; }
 };
-
 
 
 extern "C"

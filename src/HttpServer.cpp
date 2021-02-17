@@ -1,4 +1,4 @@
-
+#include <memory>
 
 #include "HttpServer.h"
 
@@ -19,11 +19,15 @@ public:
 	HttpServerImpl() {}
 
 	virtual void runBackground(const std::string& baseDir, const std::string& address, const int32_t port, const double timeoutSec) {
+		std::cout << "[NavigationManager] HTTPServer::runBackground(baseDir=" << baseDir << ", address=" << address <<", port=" << port  << ") called" << std::endl;
 		server_.set_mount_point(nullptr, baseDir.c_str());
 
 		thread_ = std::make_unique<std::thread>([address, port, this]() {
+			std::cout << "[NavigationManager] HTTPServer::runBackground() -- background task started." << std::endl;
 			server_.listen(address.c_str(), port);
+			std::cout << "[NavigationManager] HTTPServer::runBackground() -- background task stopped." << std::endl;
 			});
+		std::cout << "[NavigationManager] HTTPServer::runBackground() exit" << std::endl;
 	}
 	~HttpServerImpl() {
 		terminateBackground();
@@ -37,24 +41,29 @@ public:
 	}
 
 	virtual void initServer() {
+		std::cout << "[NavigationManager] HTTPServer::initServer() called" << std::endl;
 		std::string endpoint = "/api/";
 		server_.Get((endpoint + "currentRobotPose").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
+			std::cout << "[NavagationManager] /api/currentRobotPose -GET" << std::endl;
 			res.status = 200;
 			res.version = "1.0";
 			res.body = toJson(m_pRTC->getCurrentRobotPose());
 			});
 
 		server_.Get((endpoint + "rangeScan").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
+			std::cout << "[NavagationManager] /rangeScan -GET" << std::endl;
 			res.status = 200;
 			res.version = "1.0";
 			res.body = toJson(m_pRTC->getRange(), 4);
 			});
 
 		server_.Put((endpoint + "map/refresh").c_str(), [this](const httplib::Request& req, httplib::Response& res) {
+			std::cout << "[NavagationManager] /map/refresh -PUT- Payment: " << req.body << std::endl;
 		  rapidjson::Document doc;
 		  std::string body = req.body;
 		  doc.Parse(body.c_str());
 		  if (doc.HasParseError()) {
+			  std::cout << "[NavigationManager] ERROR: JSON parse Error: body is :" << body << std::endl;;
 		    res.status = 402;
 		    res.version = "1.0";
 		    res.body = "Invalid JSON data";
@@ -127,7 +136,7 @@ public:
 			  res.status = 200;
 			  res.version = "1.0";
 			  res.body = toJson(m_pRTC->getMCLInfo());
-			  std::cout << " body: " << res.body << std::endl;
+			  //std::cout << " body: " << res.body << std::endl;
 			}
 			else {
 			  std::cout << " - Failed. 200" << std::endl;			  

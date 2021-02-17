@@ -1,0 +1,50 @@
+#ifndef PATH_PLANNER_IDL_INCLUDED
+#define PATH_PLANNER_IDL_INCLUDED
+
+#include "NavigationDataType.idl"
+
+module NAVIGATION {
+
+  struct PathPlanParameter {
+    /// Location of the goal.
+    RTC::Pose2D goalPose;
+
+    /// Location of Robot.
+    RTC::Pose2D startPose;
+
+    /// How far away from the waypoint is considered success (radius in metres).
+    double distanceTolerance;
+
+    /// How much off the target heading is considered success (in radians).
+    double headingTolerance;
+
+    /// Target time to arrive at the waypoint by.
+    RTC::Time timeLimit;
+
+    /// Must pass points
+    Waypoint2DList passingPoints;
+
+    /// Maximum sped to travel at while heading to the waypoint.
+    RTC::Velocity2D meanSpeed;
+  };
+
+  enum PLAN_RETURN_STATUS {
+    PLAN_OK,
+    PLAN_NG_START_IS_OUTOFMAP,
+    PLAN_NG_GOAL_IS_OUTOFMAP,
+    PLAN_NG_START_IS_OCCUPIEDSTATE,
+    PLAN_NG_GOAL_IS_OCCUPIEDSTATE,
+    PLAN_NG_START_IS_GOAL,
+    PLAN_NG_NOROUTE,
+    PLAN_NG_INVALID_PARAM,
+    PLAN_NG_NOTIMPL,
+    PLAN_NG_UNKNOWN
+  };
+  
+  interface PathPlanner {
+    /// Plan Path from PathPlanParater.
+	PLAN_RETURN_STATUS planPath(in OccupancyGridMap map, in PathPlanParameter param, out Path2D outPath);
+  };
+
+};
+#endif // PATH_PLANNER_IDL_INCLUDED

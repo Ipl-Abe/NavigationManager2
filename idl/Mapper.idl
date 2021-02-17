@@ -1,0 +1,48 @@
+#ifndef MAPPER_IDL_INCLUDED
+#define MAPPER_IDL_INCLUDED
+
+#include "NavigationDataType.idl"
+
+module NAVIGATION {
+
+
+  enum MAPPER_RETURN_VALUE {
+    MAPPER_OK,
+    MAPPER_NG_INVALIDPARAMETER,
+    MAPPER_NG_EMPTYMAP,
+    MAPPER_NG_INVALIDPRECONDITION,
+    MAPPER_NG_NOTIMPL,
+    MAPPER_NG_UNKONWN
+  };
+
+  enum MAPPER_STATE {
+    MAPPER_STOPPED,
+    MAPPER_MAPPING,
+    MAPPER_SUSPEND,
+    MAPPER_ERROR,
+    MAPPER_UNKNOWN
+  };
+
+  /*!
+   * @interface OGMapper
+   * @brief Occupancy Grid Map Builder Service Interface
+   */
+  interface OccupancyGridMapper {
+    /// Initialize Current Build Map Data
+    MAPPER_RETURN_VALUE initializeMap(in OccupancyGridMapConfig config, in RTC::Pose2D initialPose);
+
+    MAPPER_RETURN_VALUE startMapping();
+
+    MAPPER_RETURN_VALUE stopMapping();
+
+    MAPPER_RETURN_VALUE suspendMapping();
+
+    MAPPER_RETURN_VALUE resumeMapping();
+
+    MAPPER_RETURN_VALUE getState(out MAPPER_STATE state);
+
+  };
+
+};
+
+#endif // MAPPER_IDL_INCLUDED
